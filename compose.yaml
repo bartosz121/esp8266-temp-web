@@ -1,0 +1,17 @@
+services:
+  app:
+    image: esp8266-web:latest
+    container_name: esp8266-web
+    build: .
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+      APP_DB_HOST: db
+      APP_DB_PORT: 5432
+      APP_DB_USER: esp8266_user
+      APP_DB_PASS: esp8266_pass
+      APP_DB_NAME: esp8266_web
+    command: ["/app/esp8266-web"]
+    restart: always
+    ports:
+      - "8080:8080"
