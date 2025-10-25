@@ -6,16 +6,17 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o main .
+RUN go build -o esp8266-web .
 
 FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates
 
-WORKDIR /root/
+WORKDIR /app/
 
-COPY --from=builder /app/main .
+COPY --from=builder /app/esp8266-web .
+COPY --from=builder /app/index.html .
 
 EXPOSE 8080
 
-CMD ["./main"]
+CMD ["/app/esp8266-web"]
