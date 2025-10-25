@@ -31,11 +31,12 @@ type TemperatureReading struct {
 }
 
 type app struct {
-	db *pgxpool.Pool
+	db        *pgxpool.Pool
+	secretKey string
 }
 
 func main() {
-	h := slogctx.NewHandler(slog.NewJSONHandler(os.Stdout, nil), nil)
+	h := slogctx.NewHandler(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}), nil)
 	logger := slog.New(h)
 	slog.SetDefault(logger)
 
@@ -82,6 +83,12 @@ func main() {
 		logger.Debug("flag db-name overridden by env APP_DB_NAME", "value", env)
 	}
 
+	secretKey := os.Getenv("APP_SECRET_KEY")
+	if secretKey == "" {
+		logger.Error("APP_SECRET_KEY environment variable is required")
+		os.Exit(1)
+	}
+
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?application_name=esp8266-web",
 		*dbUser, *dbPass, *dbHost, *dbPort, *dbName)
 	ctx := context.Background()
@@ -102,7 +109,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := &app{db: pool}
+	app := &app{db: pool, secretKey: secretKey}
 
 	if err := app.applyMigrations(ctx); err != nil {
 		logger.Error("Failed to apply migrations", "error", err)
@@ -162,6 +169,12 @@ func (a *app) dataHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
+		headerSecretKey := r.Header.Get("X-Secret-Key")
+		logger.Debug("X-Secret-Key header value", slog.String("value", headerSecretKey))
+		if headerSecretKey != a.secretKey {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
 		var tri TemperatureReadingPayload
 		if err := json.NewDecoder(r.Body).Decode(&tri); err != nil {
 			logger.Error("failed to decode temperature reading",

@@ -4,6 +4,7 @@ services:
     container_name: esp8266-web
     build: .
     environment:
+      APP_SECRET_KEY: secret
       APP_HOST: 0.0.0.0
       APP_PORT: 8080
       APP_DB_HOST: db

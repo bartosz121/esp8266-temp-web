@@ -65,7 +65,7 @@ func setupTestDB(t *testing.T) *pgxpool.Pool {
 
 func TestApplyMigrations(t *testing.T) {
 	db := setupTestDB(t)
-	app := &app{db: db}
+	app := &app{db: db, secretKey: "dummy"}
 	err := app.applyMigrations(context.Background())
 	assert.NoError(t, err)
 	var exists bool
@@ -76,12 +76,13 @@ func TestApplyMigrations(t *testing.T) {
 
 func TestDataHandlerPOST(t *testing.T) {
 	db := setupTestDB(t)
-	app := &app{db: db}
+	app := &app{db: db, secretKey: "testsecret"}
 	require.NoError(t, app.applyMigrations(context.Background()))
 
 	body := `{"tempCo": 25.5, "tempRoom": 22.0, "timestamp": 1761388101}`
 	req := httptest.NewRequest("POST", "/data", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Secret-Key", "testsecret")
 	w := httptest.NewRecorder()
 
 	app.dataHandler(w, req)
@@ -99,12 +100,13 @@ func TestDataHandlerPOST(t *testing.T) {
 
 func TestDataHandlerPOSTNilTimestamp(t *testing.T) {
 	db := setupTestDB(t)
-	app := &app{db: db}
+	app := &app{db: db, secretKey: "testsecret"}
 	require.NoError(t, app.applyMigrations(context.Background()))
 
 	body := `{"tempCo": 26.0, "tempRoom": 23.0}`
 	req := httptest.NewRequest("POST", "/data", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Secret-Key", "testsecret")
 	w := httptest.NewRecorder()
 
 	app.dataHandler(w, req)
@@ -122,7 +124,7 @@ func TestDataHandlerPOSTNilTimestamp(t *testing.T) {
 
 func TestDataHandlerGET(t *testing.T) {
 	db := setupTestDB(t)
-	app := &app{db: db}
+	app := &app{db: db, secretKey: "dummy"}
 	require.NoError(t, app.applyMigrations(context.Background()))
 
 	_, err := db.Exec(context.Background(), "INSERT INTO readings (temp_co, temp_room, timestamp) VALUES ($1, $2, $3)", 27.0, 24.0, time.Now().UTC().Unix())
@@ -143,7 +145,7 @@ func TestDataHandlerGET(t *testing.T) {
 
 func TestDataHandlerGETEmpty(t *testing.T) {
 	db := setupTestDB(t)
-	app := &app{db: db}
+	app := &app{db: db, secretKey: "dummy"}
 	require.NoError(t, app.applyMigrations(context.Background()))
 
 	_, err := db.Exec(context.Background(), "DELETE FROM readings")
@@ -160,6 +162,22 @@ func TestDataHandlerGETEmpty(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(resp))
+}
+
+func TestDataHandlerPOSTInvalidAuth(t *testing.T) {
+	db := setupTestDB(t)
+	app := &app{db: db, secretKey: "testsecret"}
+	require.NoError(t, app.applyMigrations(context.Background()))
+
+	body := `{"tempCo": 25.5, "tempRoom": 22.0}`
+	req := httptest.NewRequest("POST", "/data", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Secret-Key", "wrongkey")
+	w := httptest.NewRecorder()
+
+	app.dataHandler(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
 }
 
 func TestDataHandlerInvalidMethod(t *testing.T) {
@@ -191,5 +209,5 @@ func TestHomeHandler(t *testing.T) {
 	app.homeHandler(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "Hello world")
+	assert.Contains(t, w.Body.String(), "Temperature Monitor")
 }
