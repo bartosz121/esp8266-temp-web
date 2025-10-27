@@ -278,6 +278,17 @@ func (a *app) applyMigrations(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	_, err = a.db.Exec(ctx, `
+		ALTER TABLE readings ALTER COLUMN temp_co SET DEFAULT 0.0;
+		ALTER TABLE readings ALTER COLUMN temp_co SET NOT NULL;
+		ALTER TABLE readings ALTER COLUMN temp_room SET DEFAULT 0.0;
+		ALTER TABLE readings ALTER COLUMN temp_room SET NOT NULL;
+		ALTER TABLE readings ALTER COLUMN timestamp SET DEFAULT 0;
+		ALTER TABLE readings ALTER COLUMN timestamp SET NOT NULL
+	`)
+	if err != nil {
+		return err
+	}
 	slog.Debug("Migrations applied successfully")
 	return nil
 }
