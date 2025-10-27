@@ -149,14 +149,18 @@
       <header>
         <div>
           <div class="current-readings">
-            <div class="reading">
-              <span class="reading-label">CO Temp</span>
-              <span class="reading-value" id="currentTempCo">--°C</span>
-            </div>
-            <div class="reading">
-              <span class="reading-label">Room Temp</span>
-              <span class="reading-value" id="currentTempRoom">--°C</span>
-            </div>
+          <div class="reading">
+          <span class="reading-label">CO Temp</span>
+          <span class="reading-value" id="currentTempCo">--°C</span>
+          </div>
+          <div class="reading">
+          <span class="reading-label">Room Temp</span>
+          <span class="reading-value" id="currentTempRoom">--°C</span>
+          </div>
+          <div class="reading">
+          <span class="reading-label">Humidity</span>
+          <span class="reading-value" id="currentHumidity">--%</span>
+          </div>
             <div class="reading">
               <span class="reading-label">Last Update</span>
               <span class="reading-value" id="lastUpdate">--</span>
@@ -226,18 +230,20 @@
             formatter: function (params) {
               let result = params[0].axisValueLabel + "<br/>";
               params.forEach((param) => {
+                let unit = param.seriesName.includes("Humidity") ? "%" : "°C";
                 result +=
                   param.marker +
                   param.seriesName +
                   ": " +
                   param.value[1].toFixed(2) +
-                  "°C<br/>";
+                  unit +
+                  "<br/>";
               });
               return result;
             },
           },
           legend: {
-            data: ["CO Temperature", "Room Temperature"],
+            data: ["CO Temperature", "Room Temperature", "Humidity"],
             top: 30,
             textStyle: {
               color: getComputedStyle(document.documentElement)
@@ -277,7 +283,7 @@
           },
           yAxis: {
             type: "value",
-            name: "Temperature (°C)",
+            name: "Value",
             nameTextStyle: {
               color: getComputedStyle(document.documentElement)
                 .getPropertyValue("--color-text-secondary")
@@ -319,6 +325,18 @@
             },
             {
               name: "Room Temperature",
+              type: "line",
+              smooth: true,
+              lineStyle: {
+                width: 2,
+              },
+              emphasis: {
+                focus: "series",
+              },
+              data: [],
+            },
+            {
+              name: "Humidity",
               type: "line",
               smooth: true,
               lineStyle: {
@@ -426,14 +444,20 @@
               r.tempRoom,
             ]);
 
+            const humidityData = reversedReadings.map((r) => [
+              r.timestamp ? r.timestamp * 1000 : Date.now(),
+              r.humidity,
+            ]);
+
             chart.setOption({
-              series: [{ data: tempCoData }, { data: tempRoomData }],
+              series: [{ data: tempCoData }, { data: tempRoomData }, { data: humidityData }],
             });
           }
         } catch (error) {
           console.error("Error fetching temperature data:", error);
           document.getElementById("currentTempCo").textContent = "Error";
           document.getElementById("currentTempRoom").textContent = "Error";
+          document.getElementById("currentHumidity").textContent = "Error";
         }
       }
 
@@ -442,6 +466,8 @@
           reading.tempCo.toFixed(2) + "°C";
         document.getElementById("currentTempRoom").textContent =
           reading.tempRoom.toFixed(2) + "°C";
+        document.getElementById("currentHumidity").textContent =
+          reading.humidity.toFixed(2) + "%";
 
         if (reading.timestamp) {
           const date = new Date(reading.timestamp * 1000);

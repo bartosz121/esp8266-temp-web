@@ -20,6 +20,7 @@ import (
 type TemperatureReadingPayload struct {
 	TempCo    float64 `json:"tempCo"`
 	TempRoom  float64 `json:"tempRoom"`
+	Humidity  float64 `json:"humidity"`
 	Timestamp *int64  `json:"timestamp"`
 }
 
@@ -27,6 +28,7 @@ type TemperatureReading struct {
 	Id        int     `json:"id"`
 	TempCo    float64 `json:"tempCo"`
 	TempRoom  float64 `json:"tempRoom"`
+	Humidity  float64 `json:"humidity"`
 	Timestamp *int64  `json:"timestamp"`
 }
 
@@ -192,10 +194,10 @@ func (a *app) dataHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		var tr TemperatureReading
 		err := a.db.QueryRow(r.Context(), `
-			INSERT INTO readings (temp_co, temp_room, timestamp)
-			VALUES ($1, $2, $3)
-			RETURNING id, temp_co, temp_room, timestamp
-		`, tri.TempCo, tri.TempRoom, *tri.Timestamp).Scan(&tr.Id, &tr.TempCo, &tr.TempRoom, &tr.Timestamp)
+			INSERT INTO readings (temp_co, temp_room, humidity, timestamp)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id, temp_co, temp_room, humidity, timestamp
+		`, tri.TempCo, tri.TempRoom, tri.Humidity, *tri.Timestamp).Scan(&tr.Id, &tr.TempCo, &tr.TempRoom, &tr.Humidity, &tr.Timestamp)
 		if err != nil {
 			logger.Error("Failed to insert temperature reading", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -221,7 +223,7 @@ func (a *app) dataHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		rows, err := a.db.Query(r.Context(), `
-			SELECT id, temp_co, temp_room, timestamp
+			SELECT id, temp_co, temp_room, humidity, timestamp
 			FROM readings
 			ORDER BY timestamp DESC
 			LIMIT $1 OFFSET $2
@@ -236,7 +238,7 @@ func (a *app) dataHandler(w http.ResponseWriter, r *http.Request) {
 		readings := make([]TemperatureReading, 0)
 		for rows.Next() {
 			var tr TemperatureReading
-			if err := rows.Scan(&tr.Id, &tr.TempCo, &tr.TempRoom, &tr.Timestamp); err != nil {
+			if err := rows.Scan(&tr.Id, &tr.TempCo, &tr.TempRoom, &tr.Humidity, &tr.Timestamp); err != nil {
 				logger.Error("Failed to scan row", "error", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
@@ -266,6 +268,12 @@ func (a *app) applyMigrations(ctx context.Context) error {
 			timestamp BIGINT,
 			created_at TIMESTAMP DEFAULT NOW()
 		)
+	`)
+	if err != nil {
+		return err
+	}
+	_, err = a.db.Exec(ctx, `
+		ALTER TABLE readings ADD COLUMN IF NOT EXISTS humidity DOUBLE PRECISION NOT NULL DEFAULT 0.0
 	`)
 	if err != nil {
 		return err

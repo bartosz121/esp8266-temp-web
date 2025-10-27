@@ -79,7 +79,7 @@ func TestDataHandlerPOST(t *testing.T) {
 	app := &app{db: db, secretKey: "testsecret"}
 	require.NoError(t, app.applyMigrations(context.Background()))
 
-	body := `{"tempCo": 25.5, "tempRoom": 22.0, "timestamp": 1761388101}`
+	body := `{"tempCo": 25.5, "tempRoom": 22.0, "humidity": 60.0, "timestamp": 1761388101}`
 	req := httptest.NewRequest("POST", "/data", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Secret-Key", "testsecret")
@@ -95,6 +95,7 @@ func TestDataHandlerPOST(t *testing.T) {
 	assert.NotNil(t, resp.Id)
 	assert.Equal(t, 25.5, resp.TempCo)
 	assert.Equal(t, 22.0, resp.TempRoom)
+	assert.Equal(t, 60.0, resp.Humidity)
 	assert.Equal(t, int64(1761388101), *resp.Timestamp)
 }
 
@@ -103,7 +104,7 @@ func TestDataHandlerPOSTNilTimestamp(t *testing.T) {
 	app := &app{db: db, secretKey: "testsecret"}
 	require.NoError(t, app.applyMigrations(context.Background()))
 
-	body := `{"tempCo": 26.0, "tempRoom": 23.0}`
+	body := `{"tempCo": 26.0, "tempRoom": 23.0, "humidity": 55.0}`
 	req := httptest.NewRequest("POST", "/data", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Secret-Key", "testsecret")
@@ -119,6 +120,7 @@ func TestDataHandlerPOSTNilTimestamp(t *testing.T) {
 	assert.NotNil(t, resp.Id)
 	assert.Equal(t, 26.0, resp.TempCo)
 	assert.Equal(t, 23.0, resp.TempRoom)
+	assert.Equal(t, 55.0, resp.Humidity)
 	assert.NotNil(t, resp.Timestamp)
 }
 
@@ -127,7 +129,7 @@ func TestDataHandlerGET(t *testing.T) {
 	app := &app{db: db, secretKey: "dummy"}
 	require.NoError(t, app.applyMigrations(context.Background()))
 
-	_, err := db.Exec(context.Background(), "INSERT INTO readings (temp_co, temp_room, timestamp) VALUES ($1, $2, $3)", 27.0, 24.0, time.Now().UTC().Unix())
+	_, err := db.Exec(context.Background(), "INSERT INTO readings (temp_co, temp_room, humidity, timestamp) VALUES ($1, $2, $3, $4)", 27.0, 24.0, 50.0, time.Now().UTC().Unix())
 	require.NoError(t, err)
 
 	req := httptest.NewRequest("GET", "/data", nil)
@@ -169,7 +171,7 @@ func TestDataHandlerPOSTInvalidAuth(t *testing.T) {
 	app := &app{db: db, secretKey: "testsecret"}
 	require.NoError(t, app.applyMigrations(context.Background()))
 
-	body := `{"tempCo": 25.5, "tempRoom": 22.0}`
+	body := `{"tempCo": 25.5, "tempRoom": 22.0, "humidity": 60.0}`
 	req := httptest.NewRequest("POST", "/data", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Secret-Key", "wrongkey")
