@@ -128,19 +128,18 @@
 
       @media (max-width: 768px) {
         header {
-          flex-direction: column;
+          flex-direction: row;
           align-items: flex-start;
           gap: 1rem;
         }
 
         .current-readings {
-          width: 100%;
           flex-direction: column;
           gap: 1rem;
         }
 
         .theme-toggle {
-          align-self: flex-end;
+          margin-left: auto;
         }
       }
     </style>
@@ -148,29 +147,29 @@
   <body>
     <div class="container">
       <header>
-        <div>
-          <div class="current-readings">
-            <div class="reading">
-              <span class="reading-label">CO Temp</span>
-              <span class="reading-value" id="currentTempCo">--°C</span>
-            </div>
-            <div class="reading">
-              <span class="reading-label">Room Temp</span>
-              <span class="reading-value" id="currentTempRoom">--°C</span>
-            </div>
-            <div class="reading">
-              <span class="reading-label">Humidity</span>
-              <span class="reading-value" id="currentHumidity">--%</span>
-            </div>
-            <div class="reading">
-              <span class="reading-label">Last Update</span>
-              <span class="reading-value" id="lastUpdate">--</span>
-            </div>
-          </div>
-        </div>
-        <button class="theme-toggle" onclick="toggleTheme()">
-          <span id="themeIcon">🌙</span>
-        </button>
+      <div>
+      <div class="current-readings">
+          <div class="reading">
+            <span class="reading-label">CO Temp</span>
+          <span class="reading-value" id="currentTempCo">--°C</span>
+      </div>
+      <div class="reading">
+      <span class="reading-label">Room Temp</span>
+        <span class="reading-value" id="currentTempRoom">--°C</span>
+      </div>
+      <div class="reading">
+      <span class="reading-label">Humidity</span>
+        <span class="reading-value" id="currentHumidity">--%</span>
+      </div>
+      <div class="reading">
+      <span class="reading-label">Last Update</span>
+        <span class="reading-value" id="lastUpdate">--</span>
+      </div>
+      </div>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()">
+      <span id="themeIcon">🌙</span>
+      </button>
       </header>
 
       <div class="chart-section">
