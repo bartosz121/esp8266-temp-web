@@ -112,6 +112,7 @@
       .zoom-info {
         display: flex;
         justify-content: space-between;
+        align-items: center;
         margin-bottom: 1rem;
         font-size: 0.875rem;
         color: var(--color-text-secondary);
@@ -123,6 +124,8 @@
         border-radius: 6px;
         border: 1px solid var(--color-border);
         font-family: monospace;
+        height: 2rem;
+        line-height: 1;
       }
 
       .load-more-btn {
@@ -135,6 +138,8 @@
         font-size: 0.875rem;
         transition: all 0.2s ease;
         font-family: inherit;
+        height: 2rem;
+        line-height: 1;
       }
 
       .load-more-btn:hover:not(:disabled) {
@@ -180,6 +185,24 @@
         .theme-toggle {
           margin-left: auto;
         }
+
+        .zoom-info {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.5rem;
+        }
+
+        .zoom-range {
+          width: 100%;
+          text-align: center;
+          height: auto;
+          line-height: normal;
+        }
+
+        .load-more-btn {
+          width: 100%;
+          text-align: center;
+        }
       }
     </style>
   </head>
@@ -212,8 +235,8 @@
       </header>
 
       <div class="chart-section">
+        <div id="temperatureChart"></div>
         <div class="zoom-info">
-          <span>Zoom Range:</span>
           <div class="zoom-range" id="zoomRange">Loading...</div>
           <button
             class="load-more-btn"
@@ -223,7 +246,6 @@
             Load More Data
           </button>
         </div>
-        <div id="temperatureChart"></div>
       </div>
     </div>
 
