@@ -125,6 +125,29 @@
         font-family: monospace;
       }
 
+      .load-more-btn {
+        background: var(--color-background);
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        color: var(--color-text);
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        font-family: inherit;
+      }
+
+      .load-more-btn:hover:not(:disabled) {
+        background: var(--color-border);
+      }
+
+      .load-more-btn:disabled {
+        background: var(--color-surface);
+        color: var(--color-text-secondary);
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
       #temperatureChart {
         width: 100%;
         height: 500px;
@@ -163,34 +186,42 @@
   <body>
     <div class="container">
       <header>
-      <div>
-      <div class="current-readings">
-          <div class="reading">
-            <span class="reading-label">CO Temp</span>
-          <span class="reading-value" id="currentTempCo">--°C</span>
-      </div>
-      <div class="reading">
-      <span class="reading-label">Room Temp</span>
-        <span class="reading-value" id="currentTempRoom">--°C</span>
-      </div>
-      <div class="reading">
-      <span class="reading-label">Humidity</span>
-        <span class="reading-value" id="currentHumidity">--%</span>
-      </div>
-      <div class="reading">
-      <span class="reading-label">Last Update</span>
-        <span class="reading-value" id="lastUpdate">--</span>
-      </div>
-      </div>
-      </div>
-      <button class="theme-toggle" onclick="toggleTheme()">
-      <span id="themeIcon">🌙</span>
-      </button>
+        <div>
+          <div class="current-readings">
+            <div class="reading">
+              <span class="reading-label">CO Temp</span>
+              <span class="reading-value" id="currentTempCo">--°C</span>
+            </div>
+            <div class="reading">
+              <span class="reading-label">Room Temp</span>
+              <span class="reading-value" id="currentTempRoom">--°C</span>
+            </div>
+            <div class="reading">
+              <span class="reading-label">Humidity</span>
+              <span class="reading-value" id="currentHumidity">--%</span>
+            </div>
+            <div class="reading">
+              <span class="reading-label">Last Update</span>
+              <span class="reading-value" id="lastUpdate">--</span>
+            </div>
+          </div>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()">
+          <span id="themeIcon">🌙</span>
+        </button>
       </header>
 
       <div class="chart-section">
         <div class="zoom-info">
+          <span>Zoom Range:</span>
           <div class="zoom-range" id="zoomRange">Loading...</div>
+          <button
+            class="load-more-btn"
+            id="loadMoreBtn"
+            onclick="loadMoreData()"
+          >
+            Load More Data
+          </button>
         </div>
         <div id="temperatureChart"></div>
       </div>
@@ -202,6 +233,7 @@
       let allReadings = [];
       let currentOffset = 0;
       let isFetchingMore = false;
+      let loadMoreOffset = 100; // Separate offset for loading more data
 
       function initTheme() {
         const savedTheme = localStorage.getItem("theme") || "light";
@@ -482,18 +514,21 @@
         }
       }
 
-      async function fetchTemperatureData() {
+      async function fetchTemperatureData(offset = 0, append = false) {
         try {
-          const response = await fetch("/data?limit=100&offset=0");
+          const response = await fetch(`/data?limit=100&offset=${offset}`);
           if (!response.ok) {
             throw new Error("Failed to fetch data");
           }
 
           const readings = await response.json();
 
-          if (readings && readings.length > 0) {
-            updateCurrentReadings(readings[0]);
-            updatePageTitle(readings[0]);
+          if (readings && Array.isArray(readings) && readings.length > 0) {
+            if (!append) {
+              // For refresh/initial load, update current readings
+              updateCurrentReadings(readings[0]);
+              updatePageTitle(readings[0]);
+            }
 
             // Reverse data for chart (oldest to newest)
             const reversedReadings = [...readings].reverse();
@@ -513,22 +548,69 @@
               r.humidity,
             ]);
 
-            chart.setOption({
-              series: [
-                { data: tempCoData },
-                { data: tempRoomData },
-                { data: humidityData },
-              ],
-            });
+            if (append && chart) {
+              // Append data to existing chart data
+              const currentOption = chart.getOption();
+              const currentCoData = currentOption.series[0].data || [];
+              const currentRoomData = currentOption.series[1].data || [];
+              const currentHumidityData = currentOption.series[2].data || [];
 
-            // Update zoom display after initial data load
-            updateZoomDisplay();
+              chart.setOption({
+                series: [
+                  { data: [...currentCoData, ...tempCoData] },
+                  { data: [...currentRoomData, ...tempRoomData] },
+                  { data: [...currentHumidityData, ...humidityData] },
+                ],
+              });
+            } else {
+              // Replace data for initial load/refresh
+              chart.setOption({
+                series: [
+                  { data: tempCoData },
+                  { data: tempRoomData },
+                  { data: humidityData },
+                ],
+              });
+
+              // Update zoom display after initial data load
+              updateZoomDisplay();
+            }
+          } else if (append) {
+            // No more data to load (empty array, null, undefined, or invalid response)
+            const btn = document.getElementById("loadMoreBtn");
+            btn.textContent = "No More Data";
+            btn.disabled = true;
           }
         } catch (error) {
           console.error("Error fetching temperature data:", error);
-          document.getElementById("currentTempCo").textContent = "Error";
-          document.getElementById("currentTempRoom").textContent = "Error";
-          document.getElementById("currentHumidity").textContent = "Error";
+          if (!append) {
+            document.getElementById("currentTempCo").textContent = "Error";
+            document.getElementById("currentTempRoom").textContent = "Error";
+            document.getElementById("currentHumidity").textContent = "Error";
+          }
+        }
+      }
+
+      async function loadMoreData() {
+        const btn = document.getElementById("loadMoreBtn");
+        if (btn.disabled) return;
+
+        btn.textContent = "Loading...";
+        btn.disabled = true;
+
+        try {
+          await fetchTemperatureData(loadMoreOffset, true);
+          loadMoreOffset += 100;
+          // Only re-enable if not disabled due to no more data
+          if (btn.textContent !== "No More Data") {
+            btn.textContent = "Load More Data";
+            btn.disabled = false;
+          }
+        } catch (error) {
+          // Re-enable on error
+          btn.textContent = "Load More Data";
+          btn.disabled = false;
+          throw error; // Re-throw to maintain error handling
         }
       }
 
